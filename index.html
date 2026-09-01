@@ -10,7 +10,7 @@
     :root{--ink:#050505;--paper:#f2efe7;--blue:#163dcc;--red:#73151b;--line:rgba(242,239,231,.34)}
     *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--paper);font-family:Huiwen,"Songti SC",serif}
     button{font:inherit}.hidden{display:none!important}.app{position:relative;width:100%;height:100dvh;background:#050505}
-    .orientation{display:none;position:fixed;z-index:999;inset:0;place-content:center;text-align:center;background:#050505;padding:32px}.orientation b{font-size:34px}.orientation p{color:#aaa}
+    .orientation{display:none;position:fixed;z-index:999;inset:0;place-content:center;text-align:center;background:#050505;padding:32px}.orientation b{font-size:34px}.orientation p{color:#aaa}.orientation button{justify-self:center;border:1px solid #aaa;background:#f2efe7;padding:10px 18px;color:#050505;font:16px Huiwen,"Songti SC",serif}
     .landing{position:absolute;inset:0;overflow:hidden}.landing-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.12) brightness(.65)}
     .landing:after{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.18),rgba(0,0,0,.02) 52%,rgba(0,0,0,.88));content:""}
     .title{position:absolute;z-index:2;top:8%;left:6%}.title small{font:10px ui-monospace,monospace;letter-spacing:.24em;color:#aaa}.title h1{margin:10px 0 0;font-size:clamp(50px,8vw,120px);font-weight:400;letter-spacing:.08em;text-shadow:0 2px 18px #000}
@@ -24,16 +24,38 @@
     .ending-paper{position:absolute;z-index:4;top:0;right:0;width:48%;height:100%;overflow-y:auto;padding:6% 7% 5% 4%;background:rgba(5,5,5,.92)}.ending-paper>span{font:9px ui-monospace,monospace;color:#5274ff;letter-spacing:.18em}.ending-paper>p{margin-top:28px;color:#aaa}.ending-paper h2{margin:4px 0 10px;font-size:clamp(40px,6vw,84px);font-weight:400}.stamp{display:inline-block;border:1px solid var(--red);padding:5px 10px;color:#ddd}.ending-paper h3{font-size:clamp(18px,2vw,28px);font-weight:400;line-height:1.45}.verdict{font-size:16px;line-height:1.75;color:#ccc}.ending-actions{display:flex;gap:8px;margin-top:22px}.ending-actions button{border:1px solid #aaa;background:transparent;padding:10px 15px;color:#fff;cursor:pointer}.ending-actions button:first-child{background:var(--paper);color:#050505}
     .music{position:fixed;z-index:100;right:14px;bottom:12px;display:flex;align-items:center;gap:6px;border:1px solid #777;background:rgba(0,0,0,.9);padding:4px}.music span{min-width:66px;font-size:11px}.music small{display:block;font:7px ui-monospace,monospace;color:#888}.music input{width:65px;accent-color:var(--red)}.notice{position:fixed;z-index:120;left:50%;bottom:18px;transform:translateX(-50%);background:#eee;color:#050505;padding:8px 15px;font-size:13px}
     @media(max-height:620px) and (orientation:landscape){.toolbar{height:46px}.board,.ending{inset-top:46px}.reader{padding:24px 36px}.heading{margin:7px 0 10px}.heading h2{font-size:31px}.copy{font-size:16px}.portrait{height:68vh}.credits{bottom:4%;font-size:8px}.ending-paper{padding-top:3%}}
-    @media(orientation:portrait) and (max-width:900px){.orientation{display:grid}.app{visibility:hidden}}
+    body.mobile-portrait .orientation{display:grid}
+    body.mobile-portrait .app{visibility:hidden}
   </style>
 </head>
 <body>
-  <aside class="orientation"><b>请横屏阅读</b><p>关闭竖屏锁，并将手机横过来</p></aside>
+  <aside class="orientation"><b>请横屏阅读</b><p>关闭竖屏锁，并将手机横过来；横置后会自动进入。</p><button id="landscape-button" type="button">尝试横屏进入</button></aside>
   <main id="app" class="app"><div style="display:grid;place-content:center;height:100%;color:#888">正在装订故事……</div></main>
   <audio id="bgm" loop preload="metadata"></audio>
   <script>
   (()=>{
     const app=document.querySelector('#app'),audio=document.querySelector('#bgm');
+    function syncOrientation(){
+      const width=window.visualViewport?.width||window.innerWidth;
+      const height=window.visualViewport?.height||window.innerHeight;
+      const coarse=window.matchMedia?.('(pointer: coarse)').matches;
+      const mobile=coarse||Math.min(screen.width,screen.height)<=900;
+      document.body.classList.toggle('mobile-portrait',mobile&&height>width);
+    }
+    async function requestLandscape(){
+      syncOrientation();
+      try{
+        await document.documentElement.requestFullscreen?.();
+        await screen.orientation?.lock?.('landscape');
+      }catch{}
+      window.setTimeout(syncOrientation,100);
+      window.setTimeout(syncOrientation,500);
+    }
+    window.addEventListener('resize',syncOrientation,{passive:true});
+    window.addEventListener('orientationchange',()=>{syncOrientation();window.setTimeout(syncOrientation,250);window.setTimeout(syncOrientation,800)},{passive:true});
+    window.visualViewport?.addEventListener('resize',syncOrientation,{passive:true});
+    document.querySelector('#landscape-button').addEventListener('click',requestLandscape);
+    syncOrientation();
     const state={data:null,phase:'landing',eraIndex:0,commonIndex:0,branchIndex:null,nodeIndex:0,runId:'',playing:false,volume:.42,imageIndex:0};
     const tracks={common:'assets/audio/common.mp3',character:'assets/audio/character.mp3',ending:'assets/audio/ending.mp3'};
     const trackLabels={common:['共通线','未名之路'],character:['人物节点','命运逼近'],ending:['结局','姓名显影']};
